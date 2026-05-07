@@ -9,7 +9,7 @@ If this PR maps to a project item, link it below.
 
 <!-- One or two sentences: what changes and why. -->
 
-## Linked issue / project item
+## Linked Issue / Project Item
 
 <!-- e.g. "Closes #12", or a link to the project card. -->
 
