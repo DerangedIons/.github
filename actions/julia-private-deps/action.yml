@@ -1,0 +1,38 @@
+name: Julia private deps (DerangedIons)
+description: >-
+  Mint a short-lived GitHub App installation token and route git clones of
+  DerangedIons repositories through it, so Julia Pkg can fetch private
+  `[sources]` / `Pkg.add(url=...)` dependencies during CI.
+inputs:
+  app-private-key:
+    description: PEM private key of the "DerangedIons CI Reader" GitHub App. Pass a secret, never a literal.
+    required: true
+  app-id:
+    description: App ID of the reader app (not secret). Override only when using a different app.
+    required: false
+    default: "4808644"
+  owner:
+    description: Organization whose installation the token is minted for, and whose clone URLs are rewritten.
+    required: false
+    default: DerangedIons
+runs:
+  using: composite
+  steps:
+    - name: Mint installation token
+      id: token
+      uses: actions/create-github-app-token@v3
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.app-private-key }}
+        owner: ${{ inputs.owner }}
+        # No `repositories:` on purpose: the token covers every repo the app is installed on.
+    - name: Route ${{ inputs.owner }} clones through the token
+      shell: bash
+      env:
+        TOKEN: ${{ steps.token.outputs.token }}
+        OWNER: ${{ inputs.owner }}
+      run: |
+        git config --global url."https://x-access-token:${TOKEN}@github.com/${OWNER}/".insteadOf "https://github.com/${OWNER}/"
+        git config --global --add url."https://x-access-token:${TOKEN}@github.com/${OWNER}/".insteadOf "git@github.com:${OWNER}/"
+        # Pkg's LibGit2 backend ignores git's URL rewrites; the CLI backend honours them.
+        echo "JULIA_PKG_USE_CLI_GIT=true" >> "$GITHUB_ENV"
